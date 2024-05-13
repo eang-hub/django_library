@@ -1,6 +1,9 @@
 from django.db import models
 from django.urls import reverse # 用于通过反向URL模式生成URL
 import uuid # 用于唯一书籍实例的必需项
+from django.contrib.auth.models import User
+from datetime import date
+from django.contrib.auth.decorators import permission_required
 
 
 # python manage.py makemigrations
@@ -58,10 +61,13 @@ class BookInstance(models.Model):
     """
     表示一本书的具体副本（即可以从图书馆借阅的书籍）。
     """
+    permissions = (("can_mark_returned", "Set book as returned"),)
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, help_text="整个图书馆中此特定书籍的唯一 ID")
     book = models.ForeignKey('Book', on_delete=models.SET_NULL, null=True)
     imprint = models.CharField(max_length=200)
     due_back = models.DateField(null=True, blank=True)
+    borrower = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
 
     LOAN_STATUS = (
         ('m', '维护中'),
@@ -82,6 +88,7 @@ class BookInstance(models.Model):
         """
         return '%s (%s)' % (self.id,self.book.title)
 
+
 class Author(models.Model):
     """
     表示作者的模型。
@@ -95,13 +102,19 @@ class Author(models.Model):
         """
         返回访问特定作者实例的URL。
         """
-        return reverse('author-detail', args=[str(self.first_name)])
+        return reverse('author-detail', args=[str(self.id)])
 
     def __str__(self):
         """
         用于表示模型对象的字符串。
         """
-        return '%s, %s' % (self.last_name, self.first_name)
+        return '%s-, %s' % (self.last_name, self.first_name)
 
 
 
+
+@property
+def is_overdue(self):
+    if self.due_back and date.today() > self.due_back:
+        return True
+    return False

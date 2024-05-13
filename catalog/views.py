@@ -2,7 +2,14 @@ from django.http import Http404
 
 from .models import Book, Author, BookInstance, Genre
 from django.shortcuts import render
-from django.views import generic
+from django.views import generic, View
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin
+
+class MyView(LoginRequiredMixin, View):
+    login_url = '/login/'
+    redirect_field_name = 'redirect_to'
+
 
 class BookListView(generic.ListView):
     model = Book
@@ -21,7 +28,20 @@ class AuthorListView(generic.ListView):
     queryset = Author.objects.all() # Get 5 books containing the title war
     template_name = 'author/author_list.html'  # Specify your own template name/location
 
+class AuthorDetailView(generic.DetailView):
+    model = Author
+    template_name = 'author/author_detail.html'  # Specify your own template name/location
 
+class LoanedBooksByUserListView(LoginRequiredMixin,generic.ListView):
+    """
+    Generic class-based view listing books on loan to current user.
+    """
+    model = BookInstance
+    template_name ='books/bookinstance_list_borrowed_user.html'
+    paginate_by = 10
+
+    def get_queryset(self):
+        return BookInstance.objects.filter(borrower=self.request.user).filter(status__exact='o').order_by('due_back')
 
 # def book_detail_view(request,pk):
 #     try:
@@ -37,10 +57,12 @@ class AuthorListView(generic.ListView):
 #         context={'book':book_id,}
 #     )
 
+
+@login_required #如果已登陆将正常执行
 def index(request):
-    """
-    网站首页的视图函数。
-    """
+    num_visits = request.session.get('num_visits', 0)
+    request.session['num_visits'] = num_visits + 1
+
     # 生成一些主要对象的计数
     num_books = Book.objects.all().count()
     num_instances = BookInstance.objects.all().count()
@@ -52,5 +74,10 @@ def index(request):
     return render(
         request,
         'index.html',
-        context={'num_books': num_books, 'num_instances': num_instances, 'num_instances_available': num_instances_available, 'num_authors': num_authors},
+        context={'num_books': num_books,
+                 'num_instances': num_instances,
+                 'num_instances_available': num_instances_available,
+                 'num_authors': num_authors,
+                 'num_visits': num_visits
+                 },
     )
