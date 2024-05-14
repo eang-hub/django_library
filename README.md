@@ -1,5 +1,7 @@
-http://192.168.73.180:8088/trader/traderService
 
+http://172.20.22.217:8013/trader/traderService
+
+http://192.168.73.180:8088/trader/traderService
 
 {
     "head": {
